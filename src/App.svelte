@@ -50,7 +50,36 @@
     { name: 'Pisces',      symbol: '\u2653' },
   ];
 
-  const zodiacRadius = viewSize / 2 - 10;
+  const zodiacRadius = viewSize / 2 - 4;
+  const zodiacInner = zodiacRadius - 50;
+
+  // Simplified constellation patterns: stars [x,y] in 0..1 range, edges [i,j]
+  const constellations = [
+    // Aries
+    { stars: [[0,0.5],[0.4,0.3],[0.7,0.35],[1,0.5]], edges: [[0,1],[1,2],[2,3]] },
+    // Taurus - V shape
+    { stars: [[0,0],[0.3,0.4],[0.5,0.7],[0.7,0.4],[1,0],[0.5,0.5]], edges: [[0,1],[1,5],[5,2],[5,3],[3,4]] },
+    // Gemini - two parallel lines
+    { stars: [[0.2,0],[0.2,0.4],[0.2,0.8],[0.7,0],[0.7,0.4],[0.7,0.8],[0.2,0.4],[0.7,0.4]], edges: [[0,1],[1,2],[3,4],[4,5],[1,4]] },
+    // Cancer - inverted Y
+    { stars: [[0,0.3],[0.35,0.5],[0.65,0.5],[1,0.3],[0.35,0.8],[0.65,0.2]], edges: [[0,1],[1,2],[2,3],[1,4],[2,5]] },
+    // Leo - sickle
+    { stars: [[0,0.8],[0.2,0.4],[0.4,0.2],[0.6,0.3],[0.5,0.6],[0.8,0.7],[1,0.7]], edges: [[0,1],[1,2],[2,3],[3,4],[4,1],[4,5],[5,6]] },
+    // Virgo - Y with arms
+    { stars: [[0,0.3],[0.3,0.4],[0.5,0.5],[0.7,0.3],[1,0.2],[0.5,0.8],[0.8,0.7]], edges: [[0,1],[1,2],[2,3],[3,4],[2,5],[5,6]] },
+    // Libra - balance
+    { stars: [[0.2,0.2],[0.5,0],[0.8,0.2],[0.5,0.5],[0.2,0.8],[0.8,0.8]], edges: [[0,1],[1,2],[0,3],[2,3],[3,4],[3,5]] },
+    // Scorpio - J curve
+    { stars: [[0,0.4],[0.2,0.3],[0.4,0.35],[0.6,0.5],[0.7,0.7],[0.85,0.85],[1,0.7]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]] },
+    // Sagittarius - teapot
+    { stars: [[0.3,0],[0.5,0.2],[0.7,0],[0.8,0.4],[0.5,0.6],[0.2,0.4],[0.5,0.9]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[4,6]] },
+    // Capricorn - triangle
+    { stars: [[0,0.5],[0.3,0.2],[0.7,0.1],[1,0.3],[0.8,0.7],[0.4,0.8]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]] },
+    // Aquarius - zigzag
+    { stars: [[0,0.3],[0.25,0.5],[0.5,0.3],[0.75,0.5],[1,0.3],[0.25,0.8],[0.75,0.8]], edges: [[0,1],[1,2],[2,3],[3,4],[1,5],[3,6]] },
+    // Pisces - two fish connected
+    { stars: [[0,0.5],[0.2,0.2],[0.3,0.5],[0.5,0.5],[0.7,0.5],[0.8,0.2],[1,0.5],[0.8,0.8]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[4,7]] },
+  ];
 
   function currentDate() {
     const d = new Date(j2000);
@@ -90,6 +119,44 @@
 
   let positions = $derived(planets.map((p, i) => ({ ...p, ...planetPosition(p, i), idx: i })));
   let date = $derived(currentDate());
+
+  // Which zodiac sign is each planet in, as seen from Earth?
+  let planetsInSign = $derived(() => {
+    const earth = positions[2];
+    const map = Array.from({ length: 12 }, () => []);
+    for (const p of positions) {
+      if (p.name === 'Earth') continue;
+      const angle = Math.atan2(p.y - earth.y, p.x - earth.x);
+      // Convert to degrees 0-360, offset so 0° = top (-90°)
+      let deg = ((angle * 180 / Math.PI) + 90 + 360) % 360;
+      const signIdx = Math.floor(deg / 30);
+      map[signIdx].push(p);
+    }
+    return map;
+  });
+
+  let hoveredSign = $state(null);
+  let tooltipX = $state(0);
+  let tooltipY = $state(0);
+
+  function handleSignEnter(e, i) {
+    hoveredSign = i;
+    updateTooltipPos(e);
+  }
+
+  function handleSignMove(e) {
+    updateTooltipPos(e);
+  }
+
+  function handleSignLeave() {
+    hoveredSign = null;
+  }
+
+  function updateTooltipPos(e) {
+    const rect = e.currentTarget.closest('svg').getBoundingClientRect();
+    tooltipX = e.clientX - rect.left;
+    tooltipY = e.clientY - rect.top;
+  }
 </script>
 
 <main>
@@ -113,30 +180,74 @@
     <svg viewBox="0 0 {viewSize} {viewSize}" xmlns="http://www.w3.org/2000/svg">
       <!-- Zodiac ring -->
       <circle cx={cx} cy={cy} r={zodiacRadius} fill="none" stroke="#2a2a3a" stroke-width="1" />
+      <circle cx={cx} cy={cy} r={zodiacInner} fill="none" stroke="#2a2a3a" stroke-width="0.5" />
       {#each zodiacSigns as sign, i}
         {@const startAngle = (i * 30 - 90) * Math.PI / 180}
         {@const endAngle = ((i + 1) * 30 - 90) * Math.PI / 180}
         {@const midAngle = ((i + 0.5) * 30 - 90) * Math.PI / 180}
         <!-- sector line -->
         <line
-          x1={cx + (zodiacRadius - 24) * Math.cos(startAngle)}
-          y1={cy + (zodiacRadius - 24) * Math.sin(startAngle)}
+          x1={cx + zodiacInner * Math.cos(startAngle)}
+          y1={cy + zodiacInner * Math.sin(startAngle)}
           x2={cx + zodiacRadius * Math.cos(startAngle)}
           y2={cy + zodiacRadius * Math.sin(startAngle)}
           stroke="#2a2a3a"
           stroke-width="1"
         />
-        <!-- symbol -->
+        <!-- Unicode symbol (outer) -->
         <text
           x={cx + (zodiacRadius - 12) * Math.cos(midAngle)}
           y={cy + (zodiacRadius - 12) * Math.sin(midAngle)}
           text-anchor="middle"
           dominant-baseline="central"
-          fill="#778"
-          font-size="20"
+          fill={hoveredSign === i ? '#ccf' : '#778'}
+          font-size="14"
         >
           {sign.symbol}
         </text>
+        <!-- Constellation pattern (inner band) -->
+        {@const cst = constellations[i]}
+        {@const cMidR = (zodiacInner + zodiacRadius) / 2 - 4}
+        {@const cSize = 22}
+        {@const cCx = cx + cMidR * Math.cos(midAngle) - cSize / 2}
+        {@const cCy = cy + cMidR * Math.sin(midAngle) - cSize / 2}
+        {@const rotDeg = midAngle * 180 / Math.PI}
+        <g opacity={hoveredSign === i ? 1 : 0.5}>
+          {#each cst.edges as [a, b]}
+            <line
+              x1={cCx + cst.stars[a][0] * cSize}
+              y1={cCy + cst.stars[a][1] * cSize}
+              x2={cCx + cst.stars[b][0] * cSize}
+              y2={cCy + cst.stars[b][1] * cSize}
+              stroke={hoveredSign === i ? '#aac' : '#556'}
+              stroke-width="0.8"
+            />
+          {/each}
+          {#each cst.stars as [sx, sy]}
+            <circle
+              cx={cCx + sx * cSize}
+              cy={cCy + sy * cSize}
+              r="1.5"
+              fill={hoveredSign === i ? '#ddf' : '#889'}
+            />
+          {/each}
+        </g>
+        <!-- invisible hover sector -->
+        {@const r1 = zodiacInner}
+        {@const r2 = zodiacRadius}
+        <path
+          d="M {cx + r1 * Math.cos(startAngle)} {cy + r1 * Math.sin(startAngle)}
+             L {cx + r2 * Math.cos(startAngle)} {cy + r2 * Math.sin(startAngle)}
+             A {r2} {r2} 0 0 1 {cx + r2 * Math.cos(endAngle)} {cy + r2 * Math.sin(endAngle)}
+             L {cx + r1 * Math.cos(endAngle)} {cy + r1 * Math.sin(endAngle)}
+             A {r1} {r1} 0 0 0 {cx + r1 * Math.cos(startAngle)} {cy + r1 * Math.sin(startAngle)}
+             Z"
+          fill="transparent"
+          class="zodiac-sector"
+          onmouseenter={(e) => handleSignEnter(e, i)}
+          onmousemove={handleSignMove}
+          onmouseleave={handleSignLeave}
+        />
       {/each}
 
       {#each positions as p}
@@ -199,6 +310,37 @@
         </text>
       {/each}
     </svg>
+
+    {#if hoveredSign !== null}
+      <div class="tooltip" style="left: {tooltipX}px; top: {tooltipY}px;">
+        <div class="tooltip-header">
+          <span class="tooltip-symbol">{zodiacSigns[hoveredSign].symbol}</span>
+          {zodiacSigns[hoveredSign].name}
+          <svg class="tooltip-constellation" width="40" height="40" viewBox="0 0 1 1">
+            {#each constellations[hoveredSign].edges as [a, b]}
+              <line x1={constellations[hoveredSign].stars[a][0]} y1={constellations[hoveredSign].stars[a][1]} x2={constellations[hoveredSign].stars[b][0]} y2={constellations[hoveredSign].stars[b][1]} stroke="#aac" stroke-width="0.04" />
+            {/each}
+            {#each constellations[hoveredSign].stars as [sx, sy]}
+              <circle cx={sx} cy={sy} r="0.06" fill="#ddf" />
+            {/each}
+          </svg>
+        </div>
+        {#if planetsInSign()[hoveredSign].length > 0}
+          <div class="tooltip-planets">
+            {#each planetsInSign()[hoveredSign] as p}
+              <span class="tooltip-planet">
+                <svg width="14" height="14" viewBox="0 0 14 14">
+                  <circle cx="7" cy="7" r="5" fill={p.color} />
+                </svg>
+                {p.name}
+              </span>
+            {/each}
+          </div>
+        {:else}
+          <div class="tooltip-empty">No planets</div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </main>
 
@@ -280,6 +422,60 @@
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
+    position: relative;
+  }
+
+  .zodiac-sector {
+    cursor: pointer;
+  }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: #1a1a2eee;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    transform: translate(10px, -100%);
+    z-index: 10;
+  }
+
+  .tooltip-header {
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .tooltip-symbol {
+    font-size: 1.2rem;
+  }
+
+  .tooltip-constellation {
+    margin-left: 0.3rem;
+    background: #0a0a1a;
+    border-radius: 3px;
+    padding: 2px;
+  }
+
+  .tooltip-planets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .tooltip-planet {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .tooltip-empty {
+    color: #666;
+    font-style: italic;
   }
 
   svg {
