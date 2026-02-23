@@ -160,16 +160,15 @@
 </script>
 
 <main>
-  <h1>Solar System</h1>
-
-  <div class="controls">
+  <div class="sidebar">
+    <h1>Solar System</h1>
+    <span class="date">{formatDate(date)}</span>
     <button onclick={() => paused = !paused}>{paused ? 'Play' : 'Pause'}</button>
-    <label>
+    <label class="speed-label">
       Speed
       <input type="range" min="-50" max="50" step="0.1" bind:value={speed} />
       <span>{speed > 0 ? '+' : ''}{speed.toFixed(1)}d/f</span>
     </label>
-    <span class="date"><span class="day-num">{formatDate(date)}</span></span>
     <label class="checkbox-label">
       <input type="checkbox" bind:checked={showSightLines} />
       Sight lines
@@ -350,54 +349,52 @@
     background: #0a0a1a;
     color: #eee;
     font-family: system-ui, sans-serif;
-    display: flex;
-    justify-content: center;
   }
 
   main {
-    text-align: center;
-    padding: 1rem;
-    max-width: 850px;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    z-index: 20;
   }
 
   h1 {
-    font-size: 1.5rem;
-    margin: 0.5rem 0;
+    font-size: 1.2rem;
+    margin: 0;
     color: #ffcc33;
   }
 
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
-  }
-
-  .controls button {
+  .sidebar button {
     background: #222;
     color: #eee;
     border: 1px solid #444;
     padding: 0.3rem 0.8rem;
     border-radius: 4px;
     cursor: pointer;
-    min-width: 5rem;
   }
 
-  .controls button:hover {
+  .sidebar button:hover {
     background: #333;
   }
 
-  .controls label {
+  .speed-label {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
+    flex-direction: column;
+    gap: 0.3rem;
   }
 
-  .controls input[type="range"] {
-    width: 120px;
+  .speed-label input[type="range"] {
+    width: 100px;
   }
 
   .checkbox-label {
@@ -408,20 +405,16 @@
   }
 
   .date {
-    color: #888;
-  }
-
-  .day-num {
+    color: #aaa;
     font-variant-numeric: tabular-nums;
-    display: inline-block;
-    min-width: 14ch;
-    text-align: left;
   }
 
   .solar-system {
     width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
   }
 
@@ -480,9 +473,9 @@
 
   svg {
     width: 100%;
-    height: auto;
+    height: 100%;
+    max-height: 100vh;
     background: radial-gradient(circle at 50% 50%, #111122 0%, #0a0a1a 70%);
-    border-radius: 8px;
   }
 
   .planet {
