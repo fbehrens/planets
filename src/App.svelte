@@ -27,7 +27,7 @@
   let animFrame;
   let paused = $state(true);
   let selectedPlanet = $state(null);
-  let showSightLines = $state(false);
+  let showSightLines = $state(true);
 
   // J2000 epoch: Jan 1 2000
   const j2000 = new Date(2000, 0, 1);
