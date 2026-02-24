@@ -284,6 +284,20 @@
             <circle cx={ex} cy={ey} r="3" fill={p.color} opacity="0.8" />
           {/if}
         {/each}
+        <!-- Sight line through Sun -->
+        {@const sdx = cx - earth.x}
+        {@const sdy = cy - earth.y}
+        {@const sAngle = Math.atan2(sdy, sdx)}
+        {@const sx2 = cx + zodiacRadius * Math.cos(sAngle)}
+        {@const sy2 = cy + zodiacRadius * Math.sin(sAngle)}
+        <line
+          x1={earth.x} y1={earth.y}
+          x2={sx2} y2={sy2}
+          stroke="#ffcc33"
+          stroke-width="0.7"
+          stroke-opacity="0.6"
+        />
+        <circle cx={sx2} cy={sy2} r="3" fill="#ffcc33" opacity="0.8" />
       {/if}
 
       {#each positions as p}
